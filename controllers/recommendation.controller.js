@@ -1,7 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import asyncHandler from "../utils/asyncHandler .js";
 import dotenv from 'dotenv';
-
+import { ApiResponse } from "../utils/ApiResponse.js";
+import {ApiError} from "../utils/ApiError.js"; 
 dotenv.config();
 
 const genAI = new GoogleGenerativeAI(`${process.env.GEMINI_API_KEY}`);
@@ -10,7 +11,7 @@ const recommendPlaces = asyncHandler(async (req, res) => {
   const { source, budget } = req.body;
 
   if (!source || !budget) {
-    return res.status(400).json({ error: "Source and budget are required" });
+    return res.status(400).json(new ApiResponse(400, null, "Source and budget are required"));
   }
 
   const prompt = `
@@ -46,25 +47,19 @@ const recommendPlaces = asyncHandler(async (req, res) => {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const result = await model.generateContent(prompt);
 
-  
     const responseText = result.response.text();
 
- 
     const jsonStart = responseText.indexOf("[");
     const jsonEnd = responseText.lastIndexOf("]") + 1;
-    
+
     const jsonResponse = responseText.slice(jsonStart, jsonEnd);
 
- 
     const places = JSON.parse(jsonResponse);
 
-    return res.status(200).json({
-      message: "Places recommended successfully",
-      places,
-    });
+    return res.status(200).json(new ApiResponse(200, { places }, "Places recommended successfully"));
   } catch (error) {
     console.error("Error:", error.response ? error.response.data : error.message);
-    return res.status(500).json({ error: "Something went wrong while recommending places" });
+    return res.status(500).json(new ApiError(500, "Something went wrong while recommending places", [error.message]));
   }
 });
 
